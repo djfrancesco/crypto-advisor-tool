@@ -1,0 +1,38 @@
+# Web Dashboard
+streamlit==1.31.1
+plotly==5.18.0
+
+# Database
+duckdb==0.10.0
+
+# Data Manipulation
+pandas==2.2.0
+numpy==1.26.3
+
+# API Requests
+requests==2.31.0
+
+# Machine Learning
+scikit-learn==1.4.0
+
+# Technical Analysis
+pandas-ta==0.3.14b0
+
+# Environment Variables
+python-dotenv==1.0.1
+
+# Task Scheduling
+schedule==1.2.1
+
+# Timezone Handling
+pytz==2024.1
+
+# Testing
+pytest==8.0.0
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# Code Quality
+black==24.1.1
+flake8==7.0.0
+mypy==1.8.0
