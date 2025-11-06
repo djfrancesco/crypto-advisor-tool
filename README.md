@@ -45,9 +45,16 @@ cp .env.example .env
 # Edit .env with your settings
 ```
 
-5. **Initialize database**
+5. **Initialize database and load historical data**
 ```bash
+# Initialize database
 python -c "from database.db_manager import initialize_database; initialize_database()"
+
+# Option A: Bulk load historical data (FAST - ~20 seconds for 1 year)
+python -m data_collector.bulk_loader --load-all --days 365
+
+# Option B: Use API (slower due to rate limits)
+# Will be done automatically when you use the dashboard
 ```
 
 6. **Run the dashboard**
@@ -122,6 +129,37 @@ crypto-advisor-tool/
 - Export data to CSV
 - Clear caches
 
+### Data Sources
+
+The tool supports **multiple data sources** for maximum flexibility:
+
+#### Option 1: Bulk CSV Loading (Recommended for Initial Setup)
+```bash
+# Load 1 year of historical data in ~20 seconds
+python -m data_collector.bulk_loader --load-all --days 365
+
+# Load specific coin
+python -m data_collector.bulk_loader --coin bitcoin --days 90
+```
+- **Source**: CryptoDataDownload.com
+- **Speed**: Instant bulk downloads (no rate limits)
+- **Best for**: Initial historical data loading
+
+#### Option 2: Binance API (Default for Updates)
+- **Rate Limit**: 1200 requests/minute (48x better than CoinGecko)
+- **Data**: Direct from Binance exchange
+- **Best for**: Ongoing incremental updates
+- Configured via `DATA_SOURCE="binance"` in config.py
+
+#### Option 3: CoinGecko API
+- **Rate Limit**: 25-30 requests/minute (free tier)
+- **Data**: Aggregated from multiple sources
+- **Best for**: Backup/fallback option
+- Configure via `DATA_SOURCE="coingecko"` in config.py
+
+#### Auto Mode
+Set `DATA_SOURCE="auto"` to try Binance first, fallback to CoinGecko on failure.
+
 ### Programmatic Usage
 
 ```python
@@ -129,7 +167,12 @@ crypto-advisor-tool/
 from database.db_manager import initialize_database
 initialize_database()
 
-# Refresh data for all cryptocurrencies
+# Bulk load historical data (fast!)
+from data_collector.bulk_loader import BulkDataLoader
+loader = BulkDataLoader()
+loader.load_all(limit_days=365)
+
+# Refresh data for all cryptocurrencies (uses configured source)
 from data_collector.data_refresher import get_refresher
 refresher = get_refresher()
 results = refresher.refresh_all()

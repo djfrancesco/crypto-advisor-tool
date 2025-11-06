@@ -13,12 +13,23 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).parent
 DATABASE_PATH = os.getenv("DATABASE_PATH", str(PROJECT_ROOT / "crypto_data.duckdb"))
 
+# Data Source Configuration
+# Options: "coingecko", "binance", "auto"
+# - "coingecko": Use CoinGecko API (aggregated data, 25-30 calls/min)
+# - "binance": Use Binance API (exchange data, 1200 calls/min)
+# - "auto": Try Binance first, fallback to CoinGecko
+DATA_SOURCE = os.getenv("DATA_SOURCE", "binance")
+
 # CoinGecko API Configuration
 COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3"
 COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY", "")
 
-# Rate Limiting (CoinGecko free tier: 10-30 calls/minute)
-API_CALLS_PER_MINUTE = 25
+# Binance API Configuration
+BINANCE_BASE_URL = "https://api.binance.com/api/v3"
+
+# Rate Limiting
+API_CALLS_PER_MINUTE = 25  # CoinGecko free tier
+BINANCE_CALLS_PER_MINUTE = 1200  # Binance public API
 API_RETRY_ATTEMPTS = 3
 API_RETRY_DELAY = 2  # seconds
 API_TIMEOUT = 30  # seconds

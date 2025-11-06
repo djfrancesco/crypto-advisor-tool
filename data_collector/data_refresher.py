@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 import pytz
 
-from config import CRYPTOCURRENCIES, INITIAL_HISTORY_DAYS
+from config import CRYPTOCURRENCIES, INITIAL_HISTORY_DAYS, DATA_SOURCE
 from database.db_manager import (
     get_crypto_id,
     get_last_update_time,
@@ -17,7 +17,8 @@ from database.db_manager import (
     insert_price_data,
     log_refresh_operation,
 )
-from data_collector.api_client import get_client
+from data_collector.api_client import get_client as get_coingecko_client
+from data_collector.binance_client import get_binance_client, get_binance_symbol
 from utils.helpers import validate_price_data, performance_monitor
 
 logger = logging.getLogger(__name__)
@@ -26,8 +27,18 @@ logger = logging.getLogger(__name__)
 class DataRefresher:
     """Manages smart data refresh operations"""
 
-    def __init__(self):
-        self.client = get_client()
+    def __init__(self, data_source: str = DATA_SOURCE):
+        """
+        Initialize data refresher with specified data source
+
+        Args:
+            data_source: "coingecko", "binance", or "auto"
+        """
+        self.data_source = data_source
+        self.coingecko_client = get_coingecko_client()
+        self.binance_client = get_binance_client()
+
+        logger.info(f"DataRefresher initialized with source: {data_source}")
 
     @performance_monitor
     def smart_refresh(self, coin_id: str) -> Dict[str, any]:
@@ -112,6 +123,71 @@ class DataRefresher:
                 'records_added': 0,
             }
 
+    def _fetch_historical_data(
+        self,
+        coin_id: str,
+        from_timestamp: int,
+        to_timestamp: int
+    ) -> List[Dict]:
+        """
+        Fetch historical data from configured data source
+
+        Args:
+            coin_id: CoinGecko coin ID
+            from_timestamp: Unix timestamp (seconds)
+            to_timestamp: Unix timestamp (seconds)
+
+        Returns:
+            List of price data dicts
+        """
+        if self.data_source == "binance":
+            return self._fetch_from_binance(coin_id, from_timestamp, to_timestamp)
+        elif self.data_source == "coingecko":
+            return self._fetch_from_coingecko(coin_id, from_timestamp, to_timestamp)
+        elif self.data_source == "auto":
+            # Try Binance first, fallback to CoinGecko
+            try:
+                return self._fetch_from_binance(coin_id, from_timestamp, to_timestamp)
+            except Exception as e:
+                logger.warning(f"Binance fetch failed, falling back to CoinGecko: {e}")
+                return self._fetch_from_coingecko(coin_id, from_timestamp, to_timestamp)
+        else:
+            logger.warning(f"Unknown data source: {self.data_source}, using CoinGecko")
+            return self._fetch_from_coingecko(coin_id, from_timestamp, to_timestamp)
+
+    def _fetch_from_binance(
+        self,
+        coin_id: str,
+        from_timestamp: int,
+        to_timestamp: int
+    ) -> List[Dict]:
+        """Fetch data from Binance API"""
+        symbol = get_binance_symbol(coin_id)
+        if not symbol:
+            raise ValueError(f"No Binance symbol mapping for {coin_id}")
+
+        logger.debug(f"Fetching from Binance: {symbol}")
+        return self.binance_client.get_historical_data(
+            symbol,
+            from_timestamp,
+            to_timestamp,
+            interval="1h"
+        )
+
+    def _fetch_from_coingecko(
+        self,
+        coin_id: str,
+        from_timestamp: int,
+        to_timestamp: int
+    ) -> List[Dict]:
+        """Fetch data from CoinGecko API"""
+        logger.debug(f"Fetching from CoinGecko: {coin_id}")
+        return self.coingecko_client.get_historical_data(
+            coin_id,
+            from_timestamp,
+            to_timestamp
+        )
+
     def _initial_load(self, crypto_id: int, coin_id: str) -> Dict:
         """
         Initial data load for first run
@@ -123,8 +199,8 @@ class DataRefresher:
         from_date = now - timedelta(days=INITIAL_HISTORY_DAYS)
         to_date = now
 
-        # Fetch historical data from API
-        price_data = self.client.get_historical_data(
+        # Fetch historical data from configured source
+        price_data = self._fetch_historical_data(
             coin_id,
             int(from_date.timestamp()),
             int(to_date.timestamp())
@@ -183,7 +259,7 @@ class DataRefresher:
         from_timestamp = int((last_update - timedelta(minutes=5)).timestamp())
         to_timestamp = int(now.timestamp())
 
-        price_data = self.client.get_historical_data(
+        price_data = self._fetch_historical_data(
             coin_id,
             from_timestamp,
             to_timestamp
@@ -250,7 +326,7 @@ class DataRefresher:
                 if gap_end.tzinfo is None:
                     gap_end = pytz.UTC.localize(gap_end)
 
-                price_data = self.client.get_historical_data(
+                price_data = self._fetch_historical_data(
                     coin_id,
                     int(gap_start.timestamp()),
                     int(gap_end.timestamp())
