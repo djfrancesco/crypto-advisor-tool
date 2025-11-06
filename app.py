@@ -195,12 +195,59 @@ def render_detailed_analysis():
         st.error("Cryptocurrency not found")
         return
 
-    # Date range selector
-    col1, col2 = st.columns(2)
-    with col1:
-        days_back = st.slider("Days of history", 7, 365, 90)
+    # Time period selector buttons (like Boursorama)
+    st.write("**Time Period:**")
+    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
 
-    # Get data
+    with col1:
+        if st.button("1D", key="1d_btn", width='stretch'):
+            st.session_state.period = 1
+            st.rerun()
+    with col2:
+        if st.button("5D", key="5d_btn", width='stretch'):
+            st.session_state.period = 5
+            st.rerun()
+    with col3:
+        if st.button("1M", key="1m_btn", width='stretch'):
+            st.session_state.period = 30
+            st.rerun()
+    with col4:
+        if st.button("3M", key="3m_btn", width='stretch'):
+            st.session_state.period = 90
+            st.rerun()
+    with col5:
+        if st.button("6M", key="6m_btn", width='stretch'):
+            st.session_state.period = 180
+            st.rerun()
+    with col6:
+        if st.button("1Y", key="1y_btn", width='stretch'):
+            st.session_state.period = 365
+            st.rerun()
+    with col7:
+        if st.button("5Y", key="5y_btn", width='stretch'):
+            st.session_state.period = 365 * 5
+            st.rerun()
+    with col8:
+        if st.button("MAX", key="max_btn", width='stretch'):
+            st.session_state.period = None
+            st.rerun()
+
+    # Default period if not set
+    if 'period' not in st.session_state:
+        st.session_state.period = 90
+
+    # Track which crypto we calculated indicators for
+    if 'last_calculated_crypto' not in st.session_state:
+        st.session_state.last_calculated_crypto = None
+
+    # Only calculate technical indicators if we changed cryptocurrency
+    if st.session_state.last_calculated_crypto != coin_id:
+        with st.spinner("Calculating technical indicators..."):
+            analyzer = get_analyzer()
+            analyzer.calculate_all_indicators(crypto_id, coin_id)
+            st.session_state.last_calculated_crypto = coin_id
+
+    # Get data with indicators
     df = get_price_history(crypto_id)
 
     if df.empty:
@@ -208,17 +255,35 @@ def render_detailed_analysis():
         return
 
     # Filter by date range
-    cutoff_date = datetime.now(pytz.UTC) - timedelta(days=days_back)
-    df = df[df['timestamp'] >= cutoff_date]
+    if st.session_state.period:
+        cutoff_date = datetime.now(pytz.UTC) - timedelta(days=st.session_state.period)
+        # Ensure timestamp column is datetime64 and cutoff_date matches
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        cutoff_date = pd.Timestamp(cutoff_date).tz_localize(None)
+        df = df[df['timestamp'] >= cutoff_date]
+    else:
+        cutoff_date = df['timestamp'].min()
 
-    # Calculate technical indicators
-    with st.spinner("Calculating technical indicators..."):
-        analyzer = get_analyzer()
-        analyzer.calculate_all_indicators(crypto_id, coin_id)
+    # Calculate period statistics (like Boursorama)
+    if not df.empty:
+        current_price = df['price'].iloc[-1]
+        period_start_price = df['price'].iloc[0]
+        min_price = df['price'].min()
+        max_price = df['price'].max()
+        variation = ((current_price - period_start_price) / period_start_price) * 100
 
-    # Refresh data to get indicators
-    df = get_price_history(crypto_id)
-    df = df[df['timestamp'] >= cutoff_date]
+        # Display statistics
+        stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
+
+        with stat_col1:
+            st.metric("Current Price", f"${current_price:,.2f}")
+        with stat_col2:
+            st.metric("Variation", f"{variation:+.2f}%",
+                     delta=f"${current_price - period_start_price:+,.2f}")
+        with stat_col3:
+            st.metric("Min", f"${min_price:,.2f}")
+        with stat_col4:
+            st.metric("Max", f"${max_price:,.2f}")
 
     # Main price chart with technical indicators
     st.subheader("📈 Price Chart with Technical Indicators")
@@ -272,6 +337,19 @@ def render_detailed_analysis():
         xaxis_title="Date",
         yaxis_title="Price (USD)",
         hovermode='x unified',
+        xaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            showline=True,
+            linecolor='rgba(128, 128, 128, 0.5)',
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            showline=True,
+            linecolor='rgba(128, 128, 128, 0.5)',
+            tickformat='$,.2f',
+        ),
     )
 
     st.plotly_chart(fig, width='stretch')
@@ -294,9 +372,22 @@ def render_detailed_analysis():
 
         fig_rsi.update_layout(
             height=200,
+            xaxis_title="Date",
             yaxis_title="RSI",
             yaxis_range=[0, 100],
             hovermode='x unified',
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128, 128, 128, 0.2)',
+                showline=True,
+                linecolor='rgba(128, 128, 128, 0.5)',
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128, 128, 128, 0.2)',
+                showline=True,
+                linecolor='rgba(128, 128, 128, 0.5)',
+            ),
         )
 
         st.plotly_chart(fig_rsi, width='stretch')
@@ -327,8 +418,21 @@ def render_detailed_analysis():
 
         fig_macd.update_layout(
             height=200,
+            xaxis_title="Date",
             yaxis_title="MACD",
             hovermode='x unified',
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128, 128, 128, 0.2)',
+                showline=True,
+                linecolor='rgba(128, 128, 128, 0.5)',
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128, 128, 128, 0.2)',
+                showline=True,
+                linecolor='rgba(128, 128, 128, 0.5)',
+            ),
         )
 
         st.plotly_chart(fig_macd, width='stretch')
@@ -347,8 +451,22 @@ def render_detailed_analysis():
 
         fig_volume.update_layout(
             height=200,
+            xaxis_title="Date",
             yaxis_title="Volume (USD)",
             hovermode='x unified',
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128, 128, 128, 0.2)',
+                showline=True,
+                linecolor='rgba(128, 128, 128, 0.5)',
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128, 128, 128, 0.2)',
+                showline=True,
+                linecolor='rgba(128, 128, 128, 0.5)',
+                tickformat=',.0f',
+            ),
         )
 
         st.plotly_chart(fig_volume, width='stretch')

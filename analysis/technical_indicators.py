@@ -185,8 +185,8 @@ class TechnicalAnalyzer:
         )
 
         # Forward fill to maintain current support/resistance
-        df['support_level'] = df['support_level'].fillna(method='ffill')
-        df['resistance_level'] = df['resistance_level'].fillna(method='ffill')
+        df['support_level'] = df['support_level'].ffill()
+        df['resistance_level'] = df['resistance_level'].ffill()
 
         # Clean up temporary columns
         df = df.drop(['local_min', 'local_max'], axis=1)
