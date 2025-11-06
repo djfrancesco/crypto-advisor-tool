@@ -252,36 +252,16 @@ def update_technical_indicators(
     indicators_data: List[Dict[str, Any]],
     db_path: str = DATABASE_PATH
 ) -> int:
-    """Update technical indicators"""
+    """Update technical indicators using batch insert for better performance"""
     if not indicators_data:
         return 0
 
     conn = get_connection(db_path)
-    updated = 0
 
     try:
-        for data in indicators_data:
-            conn.execute("""
-                INSERT INTO technical_indicators (
-                    crypto_id, timestamp, ma_short, ma_long, rsi,
-                    macd, macd_signal, macd_histogram,
-                    bb_upper, bb_middle, bb_lower,
-                    support_level, resistance_level
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT (crypto_id, timestamp) DO UPDATE SET
-                    ma_short = EXCLUDED.ma_short,
-                    ma_long = EXCLUDED.ma_long,
-                    rsi = EXCLUDED.rsi,
-                    macd = EXCLUDED.macd,
-                    macd_signal = EXCLUDED.macd_signal,
-                    macd_histogram = EXCLUDED.macd_histogram,
-                    bb_upper = EXCLUDED.bb_upper,
-                    bb_middle = EXCLUDED.bb_middle,
-                    bb_lower = EXCLUDED.bb_lower,
-                    support_level = EXCLUDED.support_level,
-                    resistance_level = EXCLUDED.resistance_level
-            """, [
+        # Prepare batch data
+        batch_data = [
+            [
                 crypto_id,
                 data['timestamp'],
                 data.get('ma_short'),
@@ -295,15 +275,41 @@ def update_technical_indicators(
                 data.get('bb_lower'),
                 data.get('support_level'),
                 data.get('resistance_level')
-            ])
-            updated += 1
+            ]
+            for data in indicators_data
+        ]
+
+        # Use executemany for batch insert (much faster)
+        conn.executemany("""
+            INSERT INTO technical_indicators (
+                crypto_id, timestamp, ma_short, ma_long, rsi,
+                macd, macd_signal, macd_histogram,
+                bb_upper, bb_middle, bb_lower,
+                support_level, resistance_level
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (crypto_id, timestamp) DO UPDATE SET
+                ma_short = EXCLUDED.ma_short,
+                ma_long = EXCLUDED.ma_long,
+                rsi = EXCLUDED.rsi,
+                macd = EXCLUDED.macd,
+                macd_signal = EXCLUDED.macd_signal,
+                macd_histogram = EXCLUDED.macd_histogram,
+                bb_upper = EXCLUDED.bb_upper,
+                bb_middle = EXCLUDED.bb_middle,
+                bb_lower = EXCLUDED.bb_lower,
+                support_level = EXCLUDED.support_level,
+                resistance_level = EXCLUDED.resistance_level
+        """, batch_data)
 
         conn.commit()
+        updated = len(indicators_data)
         logger.info(f"Updated {updated} technical indicator records")
 
     except Exception as e:
         conn.rollback()
         logger.error(f"Failed to update indicators: {e}")
+        updated = 0
     finally:
         conn.close()
 

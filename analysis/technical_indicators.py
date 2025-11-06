@@ -52,23 +52,16 @@ class TechnicalAnalyzer:
         df = self._calculate_bollinger_bands(df)
         df = self._identify_support_resistance(df)
 
-        # Prepare data for database
-        indicators_data = []
-        for _, row in df.iterrows():
-            indicators_data.append({
-                'timestamp': row['timestamp'],
-                'ma_short': row.get('ma_short'),
-                'ma_long': row.get('ma_long'),
-                'rsi': row.get('rsi'),
-                'macd': row.get('macd'),
-                'macd_signal': row.get('macd_signal'),
-                'macd_histogram': row.get('macd_histogram'),
-                'bb_upper': row.get('bb_upper'),
-                'bb_middle': row.get('bb_middle'),
-                'bb_lower': row.get('bb_lower'),
-                'support_level': row.get('support_level'),
-                'resistance_level': row.get('resistance_level'),
-            })
+        # Prepare data for database (use to_dict for much better performance)
+        columns = [
+            'timestamp', 'ma_short', 'ma_long', 'rsi',
+            'macd', 'macd_signal', 'macd_histogram',
+            'bb_upper', 'bb_middle', 'bb_lower',
+            'support_level', 'resistance_level'
+        ]
+        # Only keep columns that exist in the dataframe
+        existing_columns = [col for col in columns if col in df.columns]
+        indicators_data = df[existing_columns].to_dict('records')
 
         # Update database
         updated = update_technical_indicators(crypto_id, indicators_data)
