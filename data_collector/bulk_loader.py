@@ -106,13 +106,14 @@ class BulkDataLoader:
         logger.info(f"Parsed {len(parsed_data)} records from CSV")
         return parsed_data
 
-    def load_coin_history(self, coin_id: str, limit_days: int = None) -> int:
+    def load_coin_history(self, coin_id: str, limit_days: int = None, interval: str = 'h') -> int:
         """
         Load historical data for a cryptocurrency
 
         Args:
             coin_id: CoinGecko coin ID (e.g., 'bitcoin')
             limit_days: Limit to most recent N days (optional)
+            interval: Time interval - 'h' for hourly, 'd' for daily (default: 'h')
 
         Returns:
             Number of records inserted
@@ -137,8 +138,8 @@ class BulkDataLoader:
             logger.error(f"Crypto ID not found for {coin_id}")
             return 0
 
-        # Download CSV
-        df = self.download_csv(symbol, interval='d')  # Daily data
+        # Download CSV with specified interval
+        df = self.download_csv(symbol, interval=interval)
 
         if df.empty:
             logger.warning(f"No data downloaded for {coin_id}")
@@ -146,7 +147,8 @@ class BulkDataLoader:
 
         # Limit to recent days if specified
         if limit_days:
-            df = df.head(limit_days)
+            records_to_fetch = limit_days * (24 if interval == 'h' else 1)
+            df = df.head(records_to_fetch)
 
         # Parse to our format
         price_data = self.parse_cryptodatadownload_csv(df)
@@ -157,17 +159,18 @@ class BulkDataLoader:
         logger.info(f"Loaded {inserted} records for {coin_id}")
         return inserted
 
-    def load_all(self, limit_days: int = None) -> Dict[str, int]:
+    def load_all(self, limit_days: int = None, interval: str = 'h') -> Dict[str, int]:
         """
         Load historical data for all tracked cryptocurrencies
 
         Args:
             limit_days: Limit to most recent N days (optional)
+            interval: Time interval - 'h' for hourly, 'd' for daily (default: 'h')
 
         Returns:
             Dict with coin_id as key and number of inserted records as value
         """
-        logger.info("Starting bulk data load for all cryptocurrencies")
+        logger.info(f"Starting bulk data load for all cryptocurrencies (interval={interval})")
         results = {}
 
         for crypto in CRYPTOCURRENCIES:
@@ -175,7 +178,7 @@ class BulkDataLoader:
             logger.info(f"Loading {coin_id}...")
 
             try:
-                inserted = self.load_coin_history(coin_id, limit_days)
+                inserted = self.load_coin_history(coin_id, limit_days, interval)
                 results[coin_id] = inserted
             except Exception as e:
                 logger.error(f"Failed to load {coin_id}: {e}")
@@ -208,6 +211,13 @@ def main():
         help='Limit to most recent N days'
     )
     parser.add_argument(
+        '--interval',
+        type=str,
+        choices=['h', 'd'],
+        default='h',
+        help='Time interval: h=hourly (default), d=daily'
+    )
+    parser.add_argument(
         '--load-all',
         action='store_true',
         help='Load all tracked cryptocurrencies'
@@ -219,7 +229,7 @@ def main():
 
     if args.load_all or args.coin is None:
         # Load all coins
-        results = loader.load_all(limit_days=args.days)
+        results = loader.load_all(limit_days=args.days, interval=args.interval)
 
         print("\n" + "="*60)
         print("BULK DATA LOAD RESULTS")
@@ -232,7 +242,7 @@ def main():
 
     else:
         # Load specific coin
-        count = loader.load_coin_history(args.coin, limit_days=args.days)
+        count = loader.load_coin_history(args.coin, limit_days=args.days, interval=args.interval)
         print(f"\nLoaded {count} records for {args.coin}")
 
 

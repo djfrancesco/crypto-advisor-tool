@@ -50,11 +50,11 @@ cp .env.example .env
 # Initialize database
 python -c "from database.db_manager import initialize_database; initialize_database()"
 
-# Option A: Bulk load historical data (FAST - ~20 seconds for 1 year)
-python -m data_collector.bulk_loader --load-all --days 365
+# Load hourly data from Binance (RECOMMENDED - ~2 min for 90 days)
+python load_hourly_data.py 90
 
-# Option B: Use API (slower due to rate limits)
-# Will be done automatically when you use the dashboard
+# Alternative: Daily data from CSV (faster but less granular)
+python -m data_collector.bulk_loader --load-all --days 365 --interval d
 ```
 
 6. **Run the dashboard**
@@ -133,25 +133,40 @@ crypto-advisor-tool/
 
 The tool supports **multiple data sources** for maximum flexibility:
 
-#### Option 1: Bulk CSV Loading (Recommended for Initial Setup)
+#### Option 1: Binance API - Hourly Data (RECOMMENDED)
 ```bash
-# Load 1 year of historical data in ~20 seconds
-python -m data_collector.bulk_loader --load-all --days 365
+# Load 90 days of hourly data (~2 minutes for 10,800 records)
+python load_hourly_data.py 90
+
+# Customize days
+python load_hourly_data.py 30   # Last 30 days
+```
+- **Granularity**: Hourly (24 records per day)
+- **Source**: Binance exchange API
+- **Speed**: ~2 minutes for 90 days × 5 coins
+- **Rate Limit**: 1200 req/min
+- **Best for**: Detailed analysis and ML predictions
+
+#### Option 2: Bulk CSV Loading - Daily Data
+```bash
+# Load 1 year of daily data in ~20 seconds
+python -m data_collector.bulk_loader --load-all --days 365 --interval d
 
 # Load specific coin
-python -m data_collector.bulk_loader --coin bitcoin --days 90
+python -m data_collector.bulk_loader --coin bitcoin --days 90 --interval d
 ```
+- **Granularity**: Daily (1 record per day)
 - **Source**: CryptoDataDownload.com
 - **Speed**: Instant bulk downloads (no rate limits)
-- **Best for**: Initial historical data loading
+- **Best for**: Quick setup, long-term trends
 
-#### Option 2: Binance API (Default for Updates)
+#### Option 3: Binance API - Incremental Updates (Default)
 - **Rate Limit**: 1200 requests/minute (48x better than CoinGecko)
 - **Data**: Direct from Binance exchange
 - **Best for**: Ongoing incremental updates
-- Configured via `DATA_SOURCE="binance"` in config.py
+- Configured via `DATA_SOURCE="binance"` in config.py (default)
 
-#### Option 3: CoinGecko API
+#### Option 4: CoinGecko API
 - **Rate Limit**: 25-30 requests/minute (free tier)
 - **Data**: Aggregated from multiple sources
 - **Best for**: Backup/fallback option
