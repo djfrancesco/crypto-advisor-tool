@@ -247,7 +247,6 @@ class RateLimiter:
             return result
 
         return wrapper
-    return self
 
 
 class Cache:

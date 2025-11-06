@@ -2,8 +2,9 @@
 -- DuckDB SQL for creating all required tables
 
 -- Cryptocurrencies Metadata
+CREATE SEQUENCE IF NOT EXISTS seq_cryptocurrencies_id START 1;
 CREATE TABLE IF NOT EXISTS cryptocurrencies (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_cryptocurrencies_id'),
     coin_id VARCHAR NOT NULL UNIQUE,  -- CoinGecko ID (e.g., 'bitcoin')
     symbol VARCHAR NOT NULL,          -- Symbol (e.g., 'BTC')
     name VARCHAR NOT NULL,            -- Full name (e.g., 'Bitcoin')
@@ -12,8 +13,9 @@ CREATE TABLE IF NOT EXISTS cryptocurrencies (
 );
 
 -- Price History (Core data table)
+CREATE SEQUENCE IF NOT EXISTS seq_price_history_id START 1;
 CREATE TABLE IF NOT EXISTS price_history (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_price_history_id'),
     crypto_id INTEGER NOT NULL,
     timestamp TIMESTAMP NOT NULL,
     price DOUBLE NOT NULL,
@@ -29,8 +31,9 @@ CREATE INDEX IF NOT EXISTS idx_price_history_crypto_time
 ON price_history(crypto_id, timestamp DESC);
 
 -- Technical Indicators (Calculated metrics)
+CREATE SEQUENCE IF NOT EXISTS seq_technical_indicators_id START 1;
 CREATE TABLE IF NOT EXISTS technical_indicators (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_technical_indicators_id'),
     crypto_id INTEGER NOT NULL,
     timestamp TIMESTAMP NOT NULL,
     ma_short DOUBLE,              -- Short-term moving average
@@ -53,8 +56,9 @@ CREATE INDEX IF NOT EXISTS idx_technical_indicators_crypto_time
 ON technical_indicators(crypto_id, timestamp DESC);
 
 -- ML Predictions (Buy/Sell/Hold signals)
+CREATE SEQUENCE IF NOT EXISTS seq_predictions_id START 1;
 CREATE TABLE IF NOT EXISTS predictions (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_predictions_id'),
     crypto_id INTEGER NOT NULL,
     prediction_date TIMESTAMP NOT NULL,  -- When prediction was made
     target_date TIMESTAMP NOT NULL,      -- Date being predicted
@@ -73,8 +77,9 @@ CREATE INDEX IF NOT EXISTS idx_predictions_crypto_target
 ON predictions(crypto_id, target_date DESC);
 
 -- Refresh Log (Track all data updates)
+CREATE SEQUENCE IF NOT EXISTS seq_refresh_log_id START 1;
 CREATE TABLE IF NOT EXISTS refresh_log (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_refresh_log_id'),
     crypto_id INTEGER,               -- NULL for system-wide operations
     operation_type VARCHAR NOT NULL, -- 'initial_load', 'refresh', 'gap_fill'
     start_time TIMESTAMP NOT NULL,
@@ -93,8 +98,9 @@ CREATE INDEX IF NOT EXISTS idx_refresh_log_time
 ON refresh_log(created_at DESC);
 
 -- Data Quality Metrics (Monitor data health)
+CREATE SEQUENCE IF NOT EXISTS seq_data_quality_metrics_id START 1;
 CREATE TABLE IF NOT EXISTS data_quality_metrics (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_data_quality_metrics_id'),
     crypto_id INTEGER NOT NULL,
     check_date TIMESTAMP NOT NULL,
     total_records INTEGER,
@@ -109,8 +115,9 @@ CREATE TABLE IF NOT EXISTS data_quality_metrics (
 );
 
 -- Model Performance Tracking
+CREATE SEQUENCE IF NOT EXISTS seq_model_performance_id START 1;
 CREATE TABLE IF NOT EXISTS model_performance (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_model_performance_id'),
     model_version VARCHAR NOT NULL,
     evaluation_date TIMESTAMP NOT NULL,
     crypto_id INTEGER,              -- NULL for overall metrics
