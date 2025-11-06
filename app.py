@@ -172,7 +172,7 @@ def render_overview_page():
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
             )
-            st.plotly_chart(fig, use_container_width=True, key=f"sparkline_{coin_id}")
+            st.plotly_chart(fig, width='stretch', key=f"sparkline_{coin_id}")
 
         st.divider()
 
@@ -274,7 +274,7 @@ def render_detailed_analysis():
         hovermode='x unified',
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # RSI Chart
     if 'rsi' in df.columns:
@@ -299,7 +299,7 @@ def render_detailed_analysis():
             hovermode='x unified',
         )
 
-        st.plotly_chart(fig_rsi, use_container_width=True)
+        st.plotly_chart(fig_rsi, width='stretch')
 
     # MACD Chart
     if all(col in df.columns for col in ['macd', 'macd_signal', 'macd_histogram']):
@@ -331,7 +331,7 @@ def render_detailed_analysis():
             hovermode='x unified',
         )
 
-        st.plotly_chart(fig_macd, use_container_width=True)
+        st.plotly_chart(fig_macd, width='stretch')
 
     # Volume Chart
     if 'total_volume' in df.columns:
@@ -351,7 +351,7 @@ def render_detailed_analysis():
             hovermode='x unified',
         )
 
-        st.plotly_chart(fig_volume, use_container_width=True)
+        st.plotly_chart(fig_volume, width='stretch')
 
     # ML Predictions
     st.subheader("🤖 ML Predictions")
@@ -359,7 +359,7 @@ def render_detailed_analysis():
     predictions_df = get_latest_predictions(crypto_id, limit=5)
 
     if not predictions_df.empty:
-        st.dataframe(predictions_df, use_container_width=True)
+        st.dataframe(predictions_df, width='stretch')
     else:
         st.info("No predictions available yet. Click 'Update Predictions' to generate.")
 
@@ -466,7 +466,7 @@ def render_portfolio_simulator():
 
     # Display portfolio table
     portfolio_df = pd.DataFrame(portfolio_data)
-    st.dataframe(portfolio_df, use_container_width=True)
+    st.dataframe(portfolio_df, width='stretch')
 
     # Summary metrics
     col1, col2, col3 = st.columns(3)
@@ -501,7 +501,7 @@ def render_portfolio_simulator():
             names='Cryptocurrency',
             title='Portfolio Allocation'
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 # ============================================================================
@@ -567,7 +567,7 @@ def render_data_management():
             })
 
         stats_df = pd.DataFrame(stats_data)
-        st.dataframe(stats_df, use_container_width=True)
+        st.dataframe(stats_df, width='stretch')
 
     # Export functionality
     st.subheader("📥 Export Data")
